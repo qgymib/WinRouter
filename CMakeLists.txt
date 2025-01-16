@@ -21,6 +21,7 @@ endfunction()
 ###############################################################################
 
 add_executable(${PROJECT_NAME} WIN32
+    "src/utils/win32.cpp"
     "src/widgets/AdapterPanel.cpp"
     "src/widgets/MainFrame.cpp"
     "src/main.cpp"
@@ -55,4 +56,4 @@ endif ()
 
 set(wxBUILD_SHARED OFF)
 add_subdirectory(third_party/wxWidgets)
-target_link_libraries(${PROJECT_NAME} PRIVATE wx::net wx::core wx::base)
+target_link_libraries(${PROJECT_NAME} PUBLIC wx::net wx::core wx::base)

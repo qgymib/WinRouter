@@ -1,10 +1,13 @@
+#include <wx/wx.h>
+#include <wx/listctrl.h>
+#include <wx/notebook.h>
 #include <winsock2.h>
 #include <windows.h>
 #include <netioapi.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
-#include <wx/listctrl.h>
-#include <wx/notebook.h>
+#include <cinttypes>
+#include "utils/win32.hpp"
 #include "AdapterPanel.hpp"
 
 enum
@@ -12,19 +15,37 @@ enum
     ITEMID_LISTBOX = wxID_HIGHEST + 1,
 };
 
-class DetailsPanel : public wxPanel
+struct DetailsPanel : public wxPanel
 {
-public:
-    DetailsPanel(wxWindow* parent);
-
-public:
+    explicit DetailsPanel(wxWindow* parent);
+    wxStaticText* textAdapterName;
+    wxStaticText* textLuid;
+    wxStaticText* textDescription;
+    wxStaticText* textPhysicalAddress;
 };
 
 DetailsPanel::DetailsPanel(wxWindow* parent) : wxPanel(parent)
 {
-    wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
+    const int        flags = wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL;
+    wxFlexGridSizer* fgs = new wxFlexGridSizer(2, 5, 5);
 
-    SetSizerAndFit(sizer);
+    fgs->Add(new wxStaticText(this, wxID_ANY, _("AdapterName")), 0, flags);
+    textAdapterName = new wxStaticText(this, wxID_ANY, "");
+    fgs->Add(textAdapterName);
+
+    fgs->Add(new wxStaticText(this, wxID_ANY, "Luid"), 0, flags);
+    textLuid = new wxStaticText(this, wxID_ANY, "");
+    fgs->Add(textLuid);
+
+    fgs->Add(new wxStaticText(this, wxID_ANY, _("Description")), 0, flags);
+    textDescription = new wxStaticText(this, wxID_ANY, "");
+    fgs->Add(textDescription);
+
+    fgs->Add(new wxStaticText(this, wxID_ANY, _("PhysicalAddress")), 0, flags);
+    textPhysicalAddress = new wxStaticText(this, wxID_ANY, "");
+    fgs->Add(textPhysicalAddress);
+
+    SetSizerAndFit(fgs);
 }
 
 struct wr::AdapterPanel::Data
@@ -53,6 +74,7 @@ wr::AdapterPanel::Data::Data(AdapterPanel* owner)
     /* Left */
     {
         listBox = new wxListBox(owner, ITEMID_LISTBOX);
+        listBox->SetMinSize(wxSize(200, -1));
         sizer->Add(listBox, 0, wxEXPAND | wxRIGHT);
     }
 
@@ -87,7 +109,7 @@ wr::AdapterPanel::Data::Data(AdapterPanel* owner)
     }
 
     owner->SetSizerAndFit(sizer);
-    owner->Bind(wxEVT_LISTBOX, &OnClickListBoxItem, this, ITEMID_LISTBOX);
+    owner->Bind(wxEVT_LISTBOX, &Data::OnClickListBoxItem, this, ITEMID_LISTBOX);
 
     RefreshAdapter();
 }
@@ -129,8 +151,11 @@ void wr::AdapterPanel::Data::RefreshAdapter()
 
 void wr::AdapterPanel::Data::OnClickListBoxItem(wxCommandEvent& e)
 {
-    const int idx = e.GetInt();
-    wxMessageBox(wxString::Format("OnClick %d", idx), "OnClick", wxOK | wxICON_INFORMATION);
+    const IP_ADAPTER_ADDRESSES* addr = static_cast<IP_ADAPTER_ADDRESSES*>(e.GetClientData());
+    detailsPanel->textAdapterName->SetLabel(addr->AdapterName);
+    detailsPanel->textLuid->SetLabel(wxString::Format("%" PRIu64, addr->Luid.Value));
+    detailsPanel->textDescription->SetLabel(addr->Description);
+    detailsPanel->textPhysicalAddress->SetLabel(wr::ToString(addr->PhysicalAddress, addr->PhysicalAddressLength));
 }
 
 wr::AdapterPanel::AdapterPanel(wxWindow* parent) : wxPanel(parent)
