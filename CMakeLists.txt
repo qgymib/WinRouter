@@ -1,0 +1,58 @@
+cmake_minimum_required(VERSION 3.10)
+project(WinRouter
+    VERSION 0.0.1
+)
+
+###############################################################################
+# Functions
+###############################################################################
+
+# Enable all reasonable warnings and make all warnings into errors.
+function(setup_target_wall name)
+    if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+        target_compile_options(${name} PRIVATE /W4 /WX /utf-8)
+    else ()
+        target_compile_options(${name} PRIVATE -Wall -Wextra -Werror)
+    endif ()
+endfunction()
+
+###############################################################################
+# Executable
+###############################################################################
+
+add_executable(${PROJECT_NAME} WIN32
+    "src/widgets/AdapterPanel.cpp"
+    "src/widgets/MainFrame.cpp"
+    "src/main.cpp"
+    "resource.rc"
+)
+
+target_include_directories(${PROJECT_NAME}
+    PRIVATE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+)
+
+target_compile_options(${PROJECT_NAME}
+    PRIVATE
+        -DCMAKE_PROJECT_NAME="${CMAKE_PROJECT_NAME}"
+        -DCMAKE_PROJECT_VERSION="${CMAKE_PROJECT_VERSION}"
+        -D_WIN32_WINNT=0x0600
+)
+target_link_libraries(${PROJECT_NAME} PRIVATE Iphlpapi Ws2_32)
+setup_target_wall(${PROJECT_NAME})
+
+if (MINGW)
+    target_link_options(${PROJECT_NAME} PRIVATE
+            -static-libgcc
+            -static-libstdc++
+            -static
+    )
+endif ()
+
+###############################################################################
+# Dependency
+###############################################################################
+
+set(wxBUILD_SHARED OFF)
+add_subdirectory(third_party/wxWidgets)
+target_link_libraries(${PROJECT_NAME} PRIVATE wx::net wx::core wx::base)
