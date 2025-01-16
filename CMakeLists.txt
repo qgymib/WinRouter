@@ -3,6 +3,8 @@ project(WinRouter
     VERSION 0.0.1
 )
 
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 ###############################################################################
 # Functions
 ###############################################################################
