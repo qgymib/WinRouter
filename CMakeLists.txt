@@ -22,11 +22,15 @@ endfunction()
 # Executable
 ###############################################################################
 
-add_executable(${PROJECT_NAME} WIN32
+set(src_files
     "src/utils/win32.cpp"
     "src/widgets/AdapterPanel.cpp"
     "src/widgets/MainFrame.cpp"
     "src/main.cpp"
+)
+
+add_executable(${PROJECT_NAME} WIN32
+    ${src_files}
     "resource.rc"
 )
 
@@ -59,3 +63,25 @@ endif ()
 set(wxBUILD_SHARED OFF)
 add_subdirectory(third_party/wxWidgets)
 target_link_libraries(${PROJECT_NAME} PUBLIC wx::net wx::core wx::base)
+
+###############################################################################
+# i18n
+###############################################################################
+
+set(POT_FILE ${CMAKE_CURRENT_SOURCE_DIR}/docs/${PROJECT_NAME}.pot)
+add_custom_command(OUTPUT ${POT_FILE}
+    COMMAND xgettext
+        --keyword=_
+        --package-name=${CMAKE_PROJECT_NAME}
+        --package-version=${CMAKE_PROJECT_VERSION}
+        -o ${POT_FILE}
+        -D ${CMAKE_CURRENT_SOURCE_DIR}
+        ${src_files}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    DEPENDS ${src_files}
+    COMMENT "Extract translatable strings to ${POT_FILE}"
+)
+
+add_custom_target(update_i18n_pot
+    DEPENDS ${POT_FILE}
+)
