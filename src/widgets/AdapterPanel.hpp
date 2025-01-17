@@ -9,7 +9,7 @@ namespace wr
 class AdapterPanel : public wxPanel
 {
 public:
-    AdapterPanel(wxWindow* parent);
+    explicit AdapterPanel(wxWindow* parent);
     ~AdapterPanel() override;
 
 private:

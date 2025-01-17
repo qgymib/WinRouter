@@ -25,6 +25,7 @@ endfunction()
 add_executable(${PROJECT_NAME} WIN32
     "src/utils/win32.cpp"
     "src/widgets/AdapterPanel.cpp"
+    "src/widgets/DebugPanel.cpp"
     "src/widgets/MainFrame.cpp"
     "src/main.cpp"
     "resource.rc"
@@ -55,6 +56,9 @@ endif ()
 ###############################################################################
 # Dependency
 ###############################################################################
+
+include(third_party/json.cmake)
+target_include_directories(${PROJECT_NAME} PRIVATE ${JSON_INCLUDE_DIRS})
 
 set(wxBUILD_SHARED OFF)
 add_subdirectory(third_party/wxWidgets)

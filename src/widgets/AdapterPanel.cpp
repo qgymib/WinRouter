@@ -8,12 +8,8 @@
 #include <iphlpapi.h>
 #include <cinttypes>
 #include "utils/win32.hpp"
+#include "__init__.hpp"
 #include "AdapterPanel.hpp"
-
-enum
-{
-    ITEMID_LISTBOX = wxID_HIGHEST + 1,
-};
 
 struct DetailsPanel : public wxPanel
 {
@@ -73,7 +69,7 @@ wr::AdapterPanel::Data::Data(AdapterPanel* owner)
     splitter->SetMinimumPaneSize(100);
 
     /* Left */
-    listBox = new wxListBox(splitter, ITEMID_LISTBOX);
+    listBox = new wxListBox(splitter, WR_WIDGET_ADAPTER_LIST_BOX);
 
     /* Right */
     wxPanel* rightPanel = new wxPanel(splitter);
@@ -112,7 +108,7 @@ wr::AdapterPanel::Data::Data(AdapterPanel* owner)
     mainSizer->Add(splitter, 1, wxEXPAND);
     owner->SetSizer(mainSizer);
 
-    owner->Bind(wxEVT_LISTBOX, &Data::OnClickListBoxItem, this, ITEMID_LISTBOX);
+    owner->Bind(wxEVT_LISTBOX, &Data::OnClickListBoxItem, this, WR_WIDGET_ADAPTER_LIST_BOX);
 
     RefreshAdapter();
 }

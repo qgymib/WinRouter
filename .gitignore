@@ -4,3 +4,7 @@
 
 # JetBrains
 /.idea
+
+# Visual Studio
+/.vs
+/out
