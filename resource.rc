@@ -3,3 +3,5 @@
 #include <wx/msw/wx.rc>
 
 IDI_ICON1 ICON DISCARDABLE "icon.ico"
+
+WinRouter_zh_CN MOFILE "locale/zh_CN/WinRouter.mo"

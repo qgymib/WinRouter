@@ -29,7 +29,7 @@ DetailsPanel::DetailsPanel(wxWindow* parent) : wxPanel(parent)
     const int        flags = wxALIGN_LEFT | wxALIGN_CENTER_VERTICAL;
     wxFlexGridSizer* fgs = new wxFlexGridSizer(2, 5, 5);
 
-    fgs->Add(new wxStaticText(this, wxID_ANY, _("AdapterName")), 0, flags);
+    fgs->Add(new wxStaticText(this, wxID_ANY, _("Name")), 0, flags);
     textAdapterName = new wxStaticText(this, wxID_ANY, "");
     fgs->Add(textAdapterName);
 
