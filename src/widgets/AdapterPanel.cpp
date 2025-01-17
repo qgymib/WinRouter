@@ -1,10 +1,10 @@
 #include <wx/wx.h>
 #include <wx/listctrl.h>
 #include <wx/notebook.h>
+#include <wx/splitter.h>
 #include <winsock2.h>
 #include <windows.h>
 #include <netioapi.h>
-#include <ws2tcpip.h>
 #include <iphlpapi.h>
 #include <cinttypes>
 #include "utils/win32.hpp"
@@ -69,20 +69,17 @@ wr::AdapterPanel::Data::Data(AdapterPanel* owner)
 {
     this->owner = owner;
 
-    wxBoxSizer* sizer = new wxBoxSizer(wxHORIZONTAL);
+    wxSplitterWindow* splitter = new wxSplitterWindow(owner);
+    splitter->SetMinimumPaneSize(100);
 
     /* Left */
-    {
-        listBox = new wxListBox(owner, ITEMID_LISTBOX);
-        listBox->SetMinSize(wxSize(200, -1));
-        sizer->Add(listBox, 0, wxEXPAND | wxRIGHT);
-    }
+    listBox = new wxListBox(splitter, ITEMID_LISTBOX);
 
     /* Right */
+    wxPanel* rightPanel = new wxPanel(splitter);
     {
         wxBoxSizer* sizer2 = new wxBoxSizer(wxVERTICAL);
-
-        wxNotebook* noteBook = new wxNotebook(owner, wxID_ANY);
+        wxNotebook* noteBook = new wxNotebook(rightPanel, wxID_ANY);
         detailsPanel = new DetailsPanel(noteBook);
         noteBook->AddPage(detailsPanel, _("Details"));
         identityPanel = new wxPanel(noteBook);
@@ -98,17 +95,23 @@ wr::AdapterPanel::Data::Data(AdapterPanel* owner)
         {
             wxBoxSizer* sizer3 = new wxBoxSizer(wxHORIZONTAL);
             sizer3->AddStretchSpacer();
-            wxButton* saveButton = new wxButton(owner, wxID_SAVE, _("Save"));
+            wxButton* saveButton = new wxButton(rightPanel, wxID_SAVE, _("Save"));
             sizer3->Add(saveButton);
-            wxButton* cancelButton = new wxButton(owner, wxID_CANCEL, _("Cancel"));
+            wxButton* cancelButton = new wxButton(rightPanel, wxID_CANCEL, _("Cancel"));
             sizer3->Add(cancelButton);
             sizer2->Add(sizer3, 0, wxEXPAND);
         }
 
-        sizer->Add(sizer2, 1, wxEXPAND);
+        rightPanel->SetSizer(sizer2);
     }
 
-    owner->SetSizerAndFit(sizer);
+    splitter->SplitVertically(listBox, rightPanel);
+    splitter->SetSashPosition(200);
+
+    wxBoxSizer* mainSizer = new wxBoxSizer(wxHORIZONTAL);
+    mainSizer->Add(splitter, 1, wxEXPAND);
+    owner->SetSizer(mainSizer);
+
     owner->Bind(wxEVT_LISTBOX, &Data::OnClickListBoxItem, this, ITEMID_LISTBOX);
 
     RefreshAdapter();
