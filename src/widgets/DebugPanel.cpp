@@ -191,8 +191,8 @@ static wxString s_debug_get_adapters_addresses()
 
 static wxString s_debug_get_ip_forward_table2()
 {
-    MIB_IPFORWARD_TABLE2* pIpForwardTable = nullptr;
-    DWORD                 ret = GetIpForwardTable2(AF_UNSPEC, &pIpForwardTable);
+    wr::Pointer<MIB_IPFORWARD_TABLE2> pIpForwardTable(FreeMibTable);
+    DWORD                             ret = GetIpForwardTable2(AF_UNSPEC, &pIpForwardTable);
     if (ret != NO_ERROR)
     {
         return "GetIpForwardTable2() failed.";
@@ -227,16 +227,14 @@ static wxString s_debug_get_ip_forward_table2()
         json.push_back(item);
     }
 
-    FreeMibTable(pIpForwardTable);
-
     std::string result = json.dump(4);
     return wxString::FromUTF8(result);
 }
 
 static wxString s_debug_get_ip_interface_table()
 {
-    MIB_IPINTERFACE_TABLE* pipTable = nullptr;
-    DWORD                  ret = GetIpInterfaceTable(AF_UNSPEC, &pipTable);
+    wr::Pointer<MIB_IPINTERFACE_TABLE> pipTable(FreeMibTable);
+    DWORD                              ret = GetIpInterfaceTable(AF_UNSPEC, &pipTable);
     if (ret != NO_ERROR)
     {
         return "GetIpInterfaceTable() failed.";
@@ -318,8 +316,6 @@ static wxString s_debug_get_ip_interface_table()
         json.push_back(item);
     }
 
-    FreeMibTable(pipTable);
-
     std::string result = json.dump(4);
     return wxString::FromUTF8(result);
 }
@@ -398,7 +394,7 @@ void wr::DebugPanel::Data::OnCopyToClipboard(wxCommandEvent&)
 
 void wr::DebugPanel::Data::OnOpenURL(wxCommandEvent&)
 {
-    wxLaunchDefaultBrowser("https://jsoneditoronline.org/#left=local.cupaha");
+    wxLaunchDefaultBrowser("https://jsoneditoronline.org");
 }
 
 wr::DebugPanel::DebugPanel(wxWindow* parent) : wxPanel(parent)

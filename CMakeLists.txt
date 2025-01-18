@@ -27,6 +27,7 @@ add_executable(${PROJECT_NAME} WIN32
     "src/widgets/AdapterPanel.cpp"
     "src/widgets/DebugPanel.cpp"
     "src/widgets/MainFrame.cpp"
+    "src/widgets/RouterPanel.cpp"
     "src/main.cpp"
     "resource.rc"
 )

@@ -2,6 +2,7 @@
 #include <netioapi.h>
 #include <iphlpapi.h>
 #include <ws2tcpip.h>
+#include <cassert>
 
 std::string wr::ToString(const wchar_t* str)
 {
@@ -109,4 +110,53 @@ std::string wr::ToString(const GUID* guid)
              guid->Data2, guid->Data3, guid->Data4[0], guid->Data4[1], guid->Data4[2], guid->Data4[3], guid->Data4[4],
              guid->Data4[5], guid->Data4[6], guid->Data4[7]);
     return guid_cstr;
+}
+
+wr::StringVec::StringVec()
+{
+}
+
+wr::StringVec::~StringVec()
+{
+}
+
+wr::StringVec& wr::StringVec::PushBack(const std::string& str)
+{
+    m_vec.push_back(str);
+    return *this;
+}
+
+std::string wr::StringVec::Join(const std::string& separator) const
+{
+    std::string result;
+    const size_t vec_size = m_vec.size();
+    for (size_t i = 0; i < vec_size; i++)
+    {
+        result += m_vec[i];
+        if (i < vec_size - 1)
+        {
+            result += separator;
+        }
+    }
+    return result;
+}
+
+wr::StringVec::StrVec::iterator wr::StringVec::begin()
+{
+    return m_vec.begin();
+}
+
+wr::StringVec::StrVec::iterator wr::StringVec::end()
+{
+    return m_vec.end();
+}
+
+wr::StringVec::StrVec::const_iterator wr::StringVec::begin() const
+{
+    return m_vec.begin();
+}
+
+wr::StringVec::StrVec::const_iterator wr::StringVec::end() const
+{
+    return m_vec.end();
 }

@@ -3,6 +3,7 @@
 #include "MainFrame.hpp"
 #include "AdapterPanel.hpp"
 #include "DebugPanel.hpp"
+#include "RouterPanel.hpp"
 
 static void OnAbout(wxCommandEvent&)
 {
@@ -32,7 +33,7 @@ wr::MainFrame::MainFrame(wxWindow* parent) : wxFrame(parent, wxID_ANY, CMAKE_PRO
 
         wxNotebook* noteBook = new wxNotebook(this, wxID_ANY);
         noteBook->AddPage(new AdapterPanel(noteBook), _("Adapter"));
-        noteBook->AddPage(new wxPanel(noteBook), _("Router"));
+        noteBook->AddPage(new RouterPanel(noteBook), _("Router"));
         noteBook->AddPage(new DebugPanel(noteBook), _("Debug"));
         bSizer->Add(noteBook, 1, wxEXPAND);
 
