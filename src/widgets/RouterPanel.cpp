@@ -47,6 +47,8 @@ public:
 struct wr::RouterPanel::Data
 {
     explicit Data(RouterPanel* owner);
+    ~Data();
+
     void Refresh();
 
     void OnGridIPv4Scrolled(const wxMouseEvent& e);
@@ -56,7 +58,10 @@ struct wr::RouterPanel::Data
     void OnGridIPv6Scrolled(const wxMouseEvent& e);
     void OnRefresh(const wxEvent& e);
 
+    static void OnRouteChange(PVOID CallerContext, MIB_IPFORWARD_ROW2* Row, MIB_NOTIFICATION_TYPE NotificationType);
+
     RouterPanel* owner;
+    HANDLE       routeChangeHandle;
     int          scrollStep;
 
     wxGrid*           gridIPv4;
@@ -68,6 +73,11 @@ struct wr::RouterPanel::Data
     IpForwardRecordVec      ipv6;
     AdapterAddressRecordVec adapter;
 };
+
+namespace wr
+{
+wxDEFINE_EVENT(ROUTER_REFRESH, wxCommandEvent);
+}
 
 RouteGrid::RouteGrid(wxWindow* parent, wxWindowID id)
 {
@@ -85,10 +95,23 @@ void RouteGrid::DrawCellHighlight(wxDC&, const wxGridCellAttr*)
 {
 }
 
+void wr::RouterPanel::Data::OnRouteChange(PVOID CallerContext, MIB_IPFORWARD_ROW2*, MIB_NOTIFICATION_TYPE)
+{
+    auto data = static_cast<Data*>(CallerContext);
+    wxQueueEvent(data->owner, new wxCommandEvent(ROUTER_REFRESH));
+}
+
 wr::RouterPanel::Data::Data(RouterPanel* owner)
 {
     this->owner = owner;
     scrollStep = 20;
+
+    routeChangeHandle = INVALID_HANDLE_VALUE;
+    DWORD dwRetVal = NotifyRouteChange2(AF_UNSPEC, &Data::OnRouteChange, this, false, &routeChangeHandle);
+    if (dwRetVal != NO_ERROR)
+    {
+        wr::SystemErrorDialog(owner, dwRetVal, "NotifyRouteChange2()");
+    }
 
     wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
 
@@ -139,12 +162,21 @@ wr::RouterPanel::Data::Data(RouterPanel* owner)
 
     owner->SetSizer(sizer);
 
+    owner->Bind(ROUTER_REFRESH, &Data::OnRefresh, this);
     gridIPv4->Bind(wxEVT_MOUSEWHEEL, &Data::OnGridIPv4Scrolled, this);
     gridIPv4->Bind(wxEVT_GRID_CELL_RIGHT_CLICK, &Data::OnGridIPv4RightClick, this);
-
     gridIPv6->Bind(wxEVT_MOUSEWHEEL, &Data::OnGridIPv6Scrolled, this);
 
     Refresh();
+}
+
+wr::RouterPanel::Data::~Data()
+{
+    if (routeChangeHandle != INVALID_HANDLE_VALUE)
+    {
+        CancelMibChangeNotify2(routeChangeHandle);
+        routeChangeHandle = INVALID_HANDLE_VALUE;
+    }
 }
 
 void wr::RouterPanel::Data::OnGridIPv4Scrolled(const wxMouseEvent& e)
