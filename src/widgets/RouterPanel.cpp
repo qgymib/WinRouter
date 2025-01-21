@@ -210,6 +210,36 @@ void wr::RouterPanel::Data::OnGridIPv4NewRoute(const wxCommandEvent&)
 
 void wr::RouterPanel::Data::OnGridIPv4DeleteRoute(const wxCommandEvent&)
 {
+    const wxString msg = _("Do you want to delete the selected routing entry?");
+    if (wxMessageBox(msg, _("Confirm"), wxYES_NO | wxICON_WARNING, owner) != wxYES)
+    {
+        return;
+    }
+
+    const int       row = gridIPv4->GetGridCursorRow();
+    IpForwardRecord record = ipv4[row];
+
+    MIB_IPFORWARD_ROW2 route;
+    ZeroMemory(&route, sizeof(route));
+    InitializeIpForwardEntry(&route);
+
+    route.DestinationPrefix.Prefix.si_family = AF_INET;
+    inet_pton(AF_INET, record.DestinationPrefix.c_str(), &(route.DestinationPrefix.Prefix.Ipv4.sin_addr));
+    route.DestinationPrefix.PrefixLength = record.DestinationPrefixLength;
+
+    route.NextHop.si_family = AF_INET;
+    inet_pton(AF_INET, record.NextHop.c_str(), &(route.NextHop.Ipv4.sin_addr));
+
+    route.InterfaceLuid.Value = record.InterfaceLuid;
+
+    DWORD dwRet = DeleteIpForwardEntry2(&route);
+    if (dwRet == 0)
+    {
+        Refresh();
+        return;
+    }
+
+    wr::SystemErrorDialog(owner, dwRet, "DeleteIpForwardEntry2()");
 }
 
 void wr::RouterPanel::Data::OnGridIPv6Scrolled(const wxMouseEvent& e)
