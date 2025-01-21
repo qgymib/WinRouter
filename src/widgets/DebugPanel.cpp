@@ -1,9 +1,5 @@
 #include <wx/wx.h>
 #include <wx/clipbrd.h>
-#include <winsock2.h>
-#include <windows.h>
-#include <netioapi.h>
-#include <iphlpapi.h>
 #include <nlohmann/json.hpp>
 #include <vector>
 #include "utils/win32.hpp"
@@ -13,7 +9,7 @@
 struct DebugFunc
 {
     const char* name;
-    wxString (*func)();
+    std::string (*func)();
 };
 typedef std::vector<DebugFunc> DebugFuncVec;
 
@@ -35,35 +31,11 @@ struct wr::DebugPanel::Data
     wxTextCtrl* textData;
 };
 
-static wxString s_debug_get_adapters_addresses()
+static std::string s_debug_get_adapters_addresses()
 {
-    wxMemoryBuffer        buff(16 * 1024);
-    IP_ADAPTER_ADDRESSES* addr = nullptr;
-    ULONG                 bufLen = buff.GetBufSize();
-    DWORD                 dwRetVal = ERROR_BUFFER_OVERFLOW;
-    const ULONG           flags = GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_WINS_INFO | GAA_FLAG_INCLUDE_GATEWAYS |
-                        GAA_FLAG_INCLUDE_ALL_INTERFACES | GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER;
-    while (true)
-    {
-        addr = static_cast<IP_ADAPTER_ADDRESSES*>(buff.GetData());
-        dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, addr, &bufLen);
-        if (dwRetVal != ERROR_BUFFER_OVERFLOW)
-        {
-            break;
-        }
-        buff.SetBufSize(bufLen);
-    }
-    if (dwRetVal == ERROR_NO_DATA)
-    {
-        return "";
-    }
-    if (dwRetVal != ERROR_SUCCESS)
-    {
-        return "GetAdaptersAddresses() failed";
-    }
-
-    nlohmann::json json = nlohmann::json::array();
-    for (; addr; addr = addr->Next)
+    wr::AdaptersAddresses adapters;
+    nlohmann::json        json = nlohmann::json::array();
+    for (const auto addr : adapters)
     {
         nlohmann::json item;
         item["IfIndex"] = addr->IfIndex;
@@ -185,11 +157,10 @@ static wxString s_debug_get_adapters_addresses()
         json.push_back(item);
     }
 
-    std::string result = json.dump(4);
-    return wxString::FromUTF8(result);
+    return json.dump(4);
 }
 
-static wxString s_debug_get_ip_forward_table2()
+static std::string s_debug_get_ip_forward_table2()
 {
     wr::Pointer<MIB_IPFORWARD_TABLE2> pIpForwardTable(FreeMibTable);
     DWORD                             ret = GetIpForwardTable2(AF_UNSPEC, &pIpForwardTable);
@@ -227,11 +198,10 @@ static wxString s_debug_get_ip_forward_table2()
         json.push_back(item);
     }
 
-    std::string result = json.dump(4);
-    return wxString::FromUTF8(result);
+    return json.dump(4);
 }
 
-static wxString s_debug_get_ip_interface_table()
+static std::string s_debug_get_ip_interface_table()
 {
     wr::Pointer<MIB_IPINTERFACE_TABLE> pipTable(FreeMibTable);
     DWORD                              ret = GetIpInterfaceTable(AF_UNSPEC, &pipTable);
@@ -316,8 +286,14 @@ static wxString s_debug_get_ip_interface_table()
         json.push_back(item);
     }
 
-    std::string result = json.dump(4);
-    return wxString::FromUTF8(result);
+    return json.dump(4);
+}
+
+static std::string s_debug_is_running_as_admin()
+{
+    nlohmann::json item;
+    item["IsAdmin"] = wr::IsRunningAsAdmin();
+    return item.dump(4);
 }
 
 wr::DebugPanel::Data::Data(DebugPanel* owner)
@@ -326,12 +302,13 @@ wr::DebugPanel::Data::Data(DebugPanel* owner)
     funcs.push_back(DebugFunc{ "GetAdaptersAddresses", s_debug_get_adapters_addresses });
     funcs.push_back(DebugFunc{ "GetIpForwardTable2", s_debug_get_ip_forward_table2 });
     funcs.push_back(DebugFunc{ "GetIpInterfaceTable", s_debug_get_ip_interface_table });
+    funcs.push_back(DebugFunc{ "IsRunningAsAdmin", s_debug_is_running_as_admin });
 
     wxBoxSizer* sizer = new wxBoxSizer(wxVERTICAL);
     {
         wxBoxSizer* sizer2 = new wxBoxSizer(wxHORIZONTAL);
 
-        comboBox = new wxComboBox(owner, WR_WIDGET_DEBUG_FUNC_COMBO);
+        comboBox = new wxComboBox(owner, WIDGET_DEBUG_COMBOBOX_FUNC);
         comboBox->SetEditable(false);
         for (const auto& func : funcs)
         {
@@ -341,9 +318,9 @@ wr::DebugPanel::Data::Data(DebugPanel* owner)
         currentFunc = &funcs[0];
         sizer2->Add(comboBox);
 
-        sizer2->Add(new wxButton(owner, WR_WIDGET_DEBUG_REFRESH_BUTTON, _("Refresh")));
-        sizer2->Add(new wxButton(owner, WR_WIDGET_DEBUG_COPY_TO_CLIPBOARD_BUTTON, _("Copy to clipboard")));
-        sizer2->Add(new wxButton(owner, WR_WIDGET_DEBUG_OPEN_URL_BUTTON, _("Open Online Json Editor")));
+        sizer2->Add(new wxButton(owner, wxID_REFRESH));
+        sizer2->Add(new wxButton(owner, WIDGET_DEBUG_BUTTON_COPY_TO_CLIPBOARD, _("Copy to clipboard")));
+        sizer2->Add(new wxButton(owner, WIDGET_DEBUG_BUTTON_OPEN_ONLINE_JSON_EDITOR, _("Open Online Json Editor")));
 
         sizer->Add(sizer2);
     }
@@ -355,18 +332,18 @@ wr::DebugPanel::Data::Data(DebugPanel* owner)
 
     owner->SetSizer(sizer);
 
-    owner->Bind(wxEVT_COMBOBOX, &Data::OnSelect, this, WR_WIDGET_DEBUG_FUNC_COMBO);
-    owner->Bind(wxEVT_BUTTON, &Data::OnRefresh, this, WR_WIDGET_DEBUG_REFRESH_BUTTON);
-    owner->Bind(wxEVT_BUTTON, &Data::OnCopyToClipboard, this, WR_WIDGET_DEBUG_COPY_TO_CLIPBOARD_BUTTON);
-    owner->Bind(wxEVT_BUTTON, &Data::OnOpenURL, this, WR_WIDGET_DEBUG_OPEN_URL_BUTTON);
+    owner->Bind(wxEVT_COMBOBOX, &Data::OnSelect, this, WIDGET_DEBUG_COMBOBOX_FUNC);
+    owner->Bind(wxEVT_BUTTON, &Data::OnRefresh, this, wxID_REFRESH);
+    owner->Bind(wxEVT_BUTTON, &Data::OnCopyToClipboard, this, WIDGET_DEBUG_BUTTON_COPY_TO_CLIPBOARD);
+    owner->Bind(wxEVT_BUTTON, &Data::OnOpenURL, this, WIDGET_DEBUG_BUTTON_OPEN_ONLINE_JSON_EDITOR);
 
     Refresh();
 }
 
 void wr::DebugPanel::Data::Refresh()
 {
-    const wxString data = currentFunc->func();
-    textData->SetValue(data);
+    const std::string data = currentFunc->func();
+    textData->SetValue(wxString::FromUTF8(data));
 }
 
 void wr::DebugPanel::Data::OnSelect(wxCommandEvent& e)

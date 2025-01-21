@@ -1,13 +1,13 @@
 #include <wx/wx.h>
 #include "widgets/MainFrame.hpp"
 
-class MainApp : public wxApp
+class MainApp final : public wxApp
 {
 public:
     bool OnInit() override;
 };
 
-wxIMPLEMENT_APP(MainApp);
+wxIMPLEMENT_APP(MainApp); // NOLINT
 
 bool MainApp::OnInit()
 {

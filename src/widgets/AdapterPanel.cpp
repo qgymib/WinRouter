@@ -50,8 +50,8 @@ struct wr::AdapterPanel::Data
     void RefreshAdapter();
     void OnClickListBoxItem(wxCommandEvent&);
 
-    AdapterPanel*  owner;
-    wxMemoryBuffer adapterBuff;
+    AdapterPanel*              owner;
+    wr::AdaptersAddresses::Ptr adapters;
 
     wxListBox*    listBox;
     DetailsPanel* detailsPanel;
@@ -69,7 +69,7 @@ wr::AdapterPanel::Data::Data(AdapterPanel* owner)
     splitter->SetMinimumPaneSize(100);
 
     /* Left */
-    listBox = new wxListBox(splitter, WR_WIDGET_ADAPTER_LIST_BOX);
+    listBox = new wxListBox(splitter, WIDGET_ADAPTER_LIST_BOX);
 
     /* Right */
     wxPanel* rightPanel = new wxPanel(splitter);
@@ -108,41 +108,17 @@ wr::AdapterPanel::Data::Data(AdapterPanel* owner)
     mainSizer->Add(splitter, 1, wxEXPAND);
     owner->SetSizer(mainSizer);
 
-    owner->Bind(wxEVT_LISTBOX, &Data::OnClickListBoxItem, this, WR_WIDGET_ADAPTER_LIST_BOX);
+    owner->Bind(wxEVT_LISTBOX, &Data::OnClickListBoxItem, this, WIDGET_ADAPTER_LIST_BOX);
 
     RefreshAdapter();
 }
 
 void wr::AdapterPanel::Data::RefreshAdapter()
 {
+    adapters = std::make_shared<wr::AdaptersAddresses>();
+
     listBox->Clear();
-    adapterBuff.Clear();
-
-    IP_ADAPTER_ADDRESSES* addr = nullptr;
-    ULONG                 bufLen = adapterBuff.GetBufSize();
-    DWORD                 dwRetVal = ERROR_BUFFER_OVERFLOW;
-    const ULONG           flags = GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_WINS_INFO | GAA_FLAG_INCLUDE_GATEWAYS |
-                        GAA_FLAG_INCLUDE_ALL_INTERFACES | GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER;
-    while (true)
-    {
-        addr = static_cast<IP_ADAPTER_ADDRESSES*>(adapterBuff.GetData());
-        dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, addr, &bufLen);
-        if (dwRetVal != ERROR_BUFFER_OVERFLOW)
-        {
-            break;
-        }
-        adapterBuff.SetBufSize(bufLen);
-    }
-    if (dwRetVal == ERROR_NO_DATA)
-    {
-        return;
-    }
-    if (dwRetVal != ERROR_SUCCESS)
-    {
-        throw std::runtime_error("GetAdaptersAddresses failed");
-    }
-
-    for (; addr; addr = addr->Next)
+    for (const auto addr : *adapters)
     {
         listBox->Append(addr->FriendlyName, addr);
     }

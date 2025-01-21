@@ -28,6 +28,7 @@ add_executable(${PROJECT_NAME} WIN32
     "src/widgets/AdapterPanel.cpp"
     "src/widgets/DebugPanel.cpp"
     "src/widgets/MainFrame.cpp"
+    "src/widgets/NewRouteDialog.cpp"
     "src/widgets/RouterPanel.cpp"
     "src/main.cpp"
     "resource.rc"
@@ -46,6 +47,9 @@ target_compile_options(${PROJECT_NAME}
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE Iphlpapi Ws2_32)
 setup_target_wall(${PROJECT_NAME})
+
+# https://cmake.org/cmake/help/latest/prop_tgt/CXX_STANDARD.html
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 
 if (MINGW)
     target_link_options(${PROJECT_NAME} PRIVATE

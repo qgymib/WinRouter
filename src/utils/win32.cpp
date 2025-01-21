@@ -1,33 +1,50 @@
+#include <wx/wx.h>
 #include "win32.hpp"
 #include <netioapi.h>
-#include <iphlpapi.h>
 #include <ws2tcpip.h>
 #include <cassert>
+#include <stdexcept>
+
+static std::wstring GetCurrentExecutablePath()
+{
+    DWORD                buffSize = MAX_PATH;
+    std::vector<wchar_t> buffer(buffSize);
+
+    while (true)
+    {
+        DWORD length = GetModuleFileNameW(nullptr, buffer.data(), buffSize);
+        if (length == 0)
+        {
+            throw std::runtime_error("GetModuleFileNameW failed");
+        }
+
+        if (length < buffSize)
+        {
+            return buffer.data();
+        }
+
+        buffSize *= 2;
+        buffer.resize(buffSize);
+    }
+}
 
 std::string wr::ToString(const wchar_t* str)
 {
-    std::string ret;
-
-    int target_len = WideCharToMultiByte(CP_UTF8, 0, str, -1, NULL, 0, NULL, NULL);
-    if (target_len == 0)
+    const int len = WideCharToMultiByte(CP_UTF8, 0, str, -1, nullptr, 0, nullptr, nullptr);
+    if (len == 0)
     {
-        return ret;
+        return "";
     }
 
-    char* buf = (char*)malloc(target_len);
-    if (buf == NULL)
+    std::vector<char> buf(len);
+
+    const int r = WideCharToMultiByte(CP_UTF8, 0, str, -1, buf.data(), len, nullptr, nullptr);
+    if (r != len)
     {
-        return ret;
+        throw std::runtime_error("WideCharToMultiByte() failed");
     }
 
-    int r = WideCharToMultiByte(CP_UTF8, 0, str, -1, buf, target_len, NULL, NULL);
-    assert(r == target_len);
-    (void)r;
-
-    ret = buf;
-    free(buf);
-
-    return ret;
+    return buf.data();
 }
 
 std::string wr::ToString(const BYTE* PhysicalAddress, ULONG PhysicalAddressLength)
@@ -112,27 +129,13 @@ std::string wr::ToString(const GUID* guid)
     return guid_cstr;
 }
 
-wr::StringVec::StringVec()
-{
-}
-
-wr::StringVec::~StringVec()
-{
-}
-
-wr::StringVec& wr::StringVec::PushBack(const std::string& str)
-{
-    m_vec.push_back(str);
-    return *this;
-}
-
 std::string wr::StringVec::Join(const std::string& separator) const
 {
-    std::string result;
-    const size_t vec_size = m_vec.size();
+    std::string  result;
+    const size_t vec_size = size();
     for (size_t i = 0; i < vec_size; i++)
     {
-        result += m_vec[i];
+        result += at(i);
         if (i < vec_size - 1)
         {
             result += separator;
@@ -141,22 +144,128 @@ std::string wr::StringVec::Join(const std::string& separator) const
     return result;
 }
 
-wr::StringVec::StrVec::iterator wr::StringVec::begin()
+bool wr::IsRunningAsAdmin()
 {
-    return m_vec.begin();
+    HANDLE hToken = nullptr;
+    HANDLE currProc = GetCurrentProcess();
+    if (!OpenProcessToken(currProc, TOKEN_QUERY, &hToken))
+    {
+        return false;
+    }
+
+    TOKEN_ELEVATION elevation;
+    DWORD           cbSize = sizeof(TOKEN_ELEVATION);
+    const bool      ret = GetTokenInformation(hToken, TokenElevation, &elevation, cbSize, &cbSize);
+    CloseHandle(hToken);
+
+    if (!ret)
+    {
+        return false;
+    }
+
+    return elevation.TokenIsElevated;
 }
 
-wr::StringVec::StrVec::iterator wr::StringVec::end()
+bool wr::RunAsAdmin()
 {
-    return m_vec.end();
+    if (IsRunningAsAdmin())
+    {
+        return true;
+    }
+
+    const std::wstring path = GetCurrentExecutablePath();
+
+    SHELLEXECUTEINFOW sei;
+    ZeroMemory(&sei, sizeof(sei));
+    sei.cbSize = sizeof(sei);
+    sei.lpVerb = L"runas";
+    sei.lpFile = path.c_str();
+    sei.hwnd = nullptr;
+    sei.nShow = SW_NORMAL;
+
+    return ShellExecuteExW(&sei);
 }
 
-wr::StringVec::StrVec::const_iterator wr::StringVec::begin() const
+wr::AdaptersAddresses::Iterator::Iterator(IP_ADAPTER_ADDRESSES* current)
 {
-    return m_vec.begin();
+    m_curr = current;
 }
 
-wr::StringVec::StrVec::const_iterator wr::StringVec::end() const
+wr::AdaptersAddresses::Iterator& wr::AdaptersAddresses::Iterator::operator++()
 {
-    return m_vec.end();
+    if (m_curr != nullptr)
+    {
+        m_curr = m_curr->Next;
+    }
+    return *this;
+}
+
+bool wr::AdaptersAddresses::Iterator::operator!=(const Iterator& other)
+{
+    return m_curr != other.m_curr;
+}
+
+IP_ADAPTER_ADDRESSES* wr::AdaptersAddresses::Iterator::operator*() const
+{
+    return m_curr;
+}
+
+wr::AdaptersAddresses::AdaptersAddresses()
+{
+    IP_ADAPTER_ADDRESSES* addr = nullptr;
+    ULONG                 bufLen = static_cast<ULONG>(m_buff.size());
+    DWORD                 dwRetVal = ERROR_BUFFER_OVERFLOW;
+    const ULONG           flags = GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_WINS_INFO | GAA_FLAG_INCLUDE_GATEWAYS |
+                        GAA_FLAG_INCLUDE_ALL_INTERFACES | GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER;
+    while (true)
+    {
+        addr = reinterpret_cast<IP_ADAPTER_ADDRESSES*>(m_buff.data());
+        dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, addr, &bufLen);
+        if (dwRetVal != ERROR_BUFFER_OVERFLOW)
+        {
+            break;
+        }
+        m_buff.resize(bufLen);
+    }
+    m_addr = nullptr;
+
+    if (dwRetVal == ERROR_NO_DATA)
+    {
+        return;
+    }
+
+    if (dwRetVal != ERROR_SUCCESS)
+    {
+        throw std::runtime_error("GetAdaptersAddresses() failed");
+    }
+
+    m_addr = reinterpret_cast<IP_ADAPTER_ADDRESSES*>(m_buff.data());
+}
+
+wr::AdaptersAddresses::Iterator wr::AdaptersAddresses::begin()
+{
+    return m_addr;
+}
+
+wr::AdaptersAddresses::Iterator wr::AdaptersAddresses::end()
+{
+    return nullptr;
+}
+
+void wr::SystemErrorDialog(wxWindow* parent, DWORD errcode, const std::string& title)
+{
+    const wxString caption = wxString::FromUTF8(title);
+
+    const DWORD dwFlags = FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM;
+    wchar_t*    errMsg = nullptr;
+    const DWORD dwRetVal = FormatMessageW(dwFlags, nullptr, errcode, 0, reinterpret_cast<LPWSTR>(&errMsg), 0, nullptr);
+    if (dwRetVal == 0)
+    {
+        abort();
+    }
+
+    const wxString message = errMsg;
+    LocalFree(errMsg);
+
+    wxMessageBox(message, caption, wxOK | wxICON_ERROR, parent);
 }

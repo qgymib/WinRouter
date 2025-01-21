@@ -13,6 +13,8 @@ public:
     ~MainFrame() override;
 
 private:
+    struct Data;
+    Data* m_data;
 };
 
 } // namespace wr

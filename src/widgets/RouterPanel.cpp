@@ -1,14 +1,14 @@
 #include <wx/wx.h>
 #include <wx/grid.h>
-#include <winsock2.h>
-#include <windows.h>
-#include <netioapi.h>
-#include <iphlpapi.h>
 #include <vector>
 #include <cstdint>
 #include <cinttypes>
 #include "utils/win32.hpp"
+#include "__init__.hpp"
+#include "NewRouteDialog.hpp"
 #include "RouterPanel.hpp"
+
+#include <ws2tcpip.h>
 
 struct ProtocolItem
 {
@@ -37,12 +37,24 @@ struct AdapterAddressRecord
 };
 typedef std::vector<AdapterAddressRecord> AdapterAddressRecordVec;
 
+class RouteGrid final : public wxGrid
+{
+public:
+    RouteGrid(wxWindow* parent, wxWindowID id);
+    void DrawCellHighlight(wxDC&, const wxGridCellAttr*) override;
+};
+
 struct wr::RouterPanel::Data
 {
     explicit Data(RouterPanel* owner);
     void Refresh();
+
     void OnGridIPv4Scrolled(const wxMouseEvent& e);
+    void OnGridIPv4RightClick(const wxGridEvent& e);
+    void OnGridIPv4NewRoute(const wxCommandEvent& e);
+    void OnGridIPv4DeleteRoute(const wxCommandEvent& e);
     void OnGridIPv6Scrolled(const wxMouseEvent& e);
+    void OnRefresh(const wxEvent& e);
 
     RouterPanel* owner;
     int          scrollStep;
@@ -57,6 +69,22 @@ struct wr::RouterPanel::Data
     AdapterAddressRecordVec adapter;
 };
 
+RouteGrid::RouteGrid(wxWindow* parent, wxWindowID id)
+{
+    Init();
+    Create(parent, id);
+
+    EnableGridLines(false);
+    EnableEditing(false);
+    SetRowLabelSize(0);
+    DisableDragRowSize();
+    AutoSizeColumns();
+}
+
+void RouteGrid::DrawCellHighlight(wxDC&, const wxGridCellAttr*)
+{
+}
+
 wr::RouterPanel::Data::Data(RouterPanel* owner)
 {
     this->owner = owner;
@@ -68,8 +96,8 @@ wr::RouterPanel::Data::Data(RouterPanel* owner)
         wxStaticBoxSizer* sizer2 = new wxStaticBoxSizer(wxVERTICAL, owner, "IPv4");
         scrolledWindowIPv4 = new wxScrolledWindow(sizer2->GetStaticBox(), wxID_ANY);
         scrolledWindowIPv4->SetScrollRate(scrollStep, scrollStep);
-        gridIPv4 = new wxGrid(scrolledWindowIPv4, wxID_ANY);
-        gridIPv4->CreateGrid(0, 7);
+        gridIPv4 = new RouteGrid(scrolledWindowIPv4, wxID_ANY);
+        gridIPv4->CreateGrid(0, 7, wxGrid::wxGridSelectRows);
         gridIPv4->SetColLabelValue(0, _("Destination"));
         gridIPv4->SetColLabelValue(1, _("NetMask"));
         gridIPv4->SetColLabelValue(2, _("Gateway"));
@@ -77,12 +105,6 @@ wr::RouterPanel::Data::Data(RouterPanel* owner)
         gridIPv4->SetColLabelValue(4, _("Metric"));
         gridIPv4->SetColLabelValue(5, _("Protocol"));
         gridIPv4->SetColLabelValue(6, _("Interface Name"));
-        gridIPv4->EnableGridLines(false);
-        gridIPv4->EnableEditing(false);
-        gridIPv4->SetRowLabelSize(0);
-        gridIPv4->SetSelectionMode(wxGrid::wxGridSelectRows);
-        gridIPv4->DisableDragRowSize();
-        gridIPv4->AutoSizeColumns();
 
         wxBoxSizer* scrollSizer = new wxBoxSizer(wxVERTICAL);
         scrollSizer->Add(gridIPv4, 1, wxEXPAND);
@@ -97,20 +119,14 @@ wr::RouterPanel::Data::Data(RouterPanel* owner)
         wxStaticBoxSizer* sizer3 = new wxStaticBoxSizer(wxVERTICAL, owner, "IPv6");
         scrolledWindowIPv6 = new wxScrolledWindow(sizer3->GetStaticBox(), wxID_ANY);
         scrolledWindowIPv6->SetScrollRate(scrollStep, scrollStep);
-        gridIPv6 = new wxGrid(scrolledWindowIPv6, wxID_ANY);
-        gridIPv6->CreateGrid(0, 6);
+        gridIPv6 = new RouteGrid(scrolledWindowIPv6, wxID_ANY);
+        gridIPv6->CreateGrid(0, 6, wxGrid::wxGridSelectRows);
         gridIPv6->SetColLabelValue(0, _("Destination"));
         gridIPv6->SetColLabelValue(1, _("Gateway"));
         gridIPv6->SetColLabelValue(2, _("Interface"));
         gridIPv6->SetColLabelValue(3, _("Metric"));
         gridIPv6->SetColLabelValue(4, _("Protocol"));
         gridIPv6->SetColLabelValue(5, _("Interface Name"));
-        gridIPv6->EnableGridLines(false);
-        gridIPv6->EnableEditing(false);
-        gridIPv6->SetRowLabelSize(0);
-        gridIPv6->SetSelectionMode(wxGrid::wxGridSelectRows);
-        gridIPv6->DisableDragRowSize();
-        gridIPv6->AutoSizeColumns();
 
         wxBoxSizer* scrollSizer = new wxBoxSizer(wxVERTICAL);
         scrollSizer->Add(gridIPv6, 1, wxEXPAND);
@@ -124,6 +140,8 @@ wr::RouterPanel::Data::Data(RouterPanel* owner)
     owner->SetSizer(sizer);
 
     gridIPv4->Bind(wxEVT_MOUSEWHEEL, &Data::OnGridIPv4Scrolled, this);
+    gridIPv4->Bind(wxEVT_GRID_CELL_RIGHT_CLICK, &Data::OnGridIPv4RightClick, this);
+
     gridIPv6->Bind(wxEVT_MOUSEWHEEL, &Data::OnGridIPv6Scrolled, this);
 
     Refresh();
@@ -134,6 +152,64 @@ void wr::RouterPanel::Data::OnGridIPv4Scrolled(const wxMouseEvent& e)
     const int scrollPos = scrolledWindowIPv4->GetScrollPos(wxVERTICAL);
     const int curPos = e.GetWheelRotation() > 0 ? scrollPos - scrollStep : scrollPos + scrollStep;
     scrolledWindowIPv4->Scroll(-1, curPos);
+}
+
+void wr::RouterPanel::Data::OnGridIPv4RightClick(const wxGridEvent& e)
+{
+    const int row = e.GetRow();
+    const int col = e.GetCol();
+    gridIPv4->ClearSelection();
+    gridIPv4->SetGridCursor(row, col);
+    gridIPv4->SelectRow(row);
+
+    wxMenu menu;
+    menu.Append(WIDGET_ROUTER_MENU_NEW_ROUTER, _("New Route"));
+    menu.Append(wxID_DELETE);
+    menu.AppendSeparator();
+    menu.Append(wxID_REFRESH);
+
+    menu.Bind(wxEVT_MENU, &Data::OnGridIPv4NewRoute, this, WIDGET_ROUTER_MENU_NEW_ROUTER);
+    menu.Bind(wxEVT_MENU, &Data::OnGridIPv4DeleteRoute, this, wxID_DELETE);
+    menu.Bind(wxEVT_MENU, &Data::OnRefresh, this, wxID_REFRESH);
+
+    gridIPv4->PopupMenu(&menu);
+}
+
+void wr::RouterPanel::Data::OnGridIPv4NewRoute(const wxCommandEvent&)
+{
+    wr::NewRouteDialog dialog(owner, false);
+
+    wr::NewRouteDialog::Result result;
+    if (!dialog.ShowModalAndGetResult(result))
+    {
+        return;
+    }
+
+    MIB_IPFORWARD_ROW2 route;
+    InitializeIpForwardEntry(&route);
+
+    route.DestinationPrefix.Prefix.si_family = AF_INET;
+    inet_pton(AF_INET, result.Destination.c_str(), &(route.DestinationPrefix.Prefix.Ipv4.sin_addr));
+    route.DestinationPrefix.PrefixLength = result.Netmask;
+
+    route.NextHop.si_family = AF_INET;
+    inet_pton(AF_INET, result.Gateway.c_str(), &(route.NextHop.Ipv4.sin_addr));
+
+    route.InterfaceLuid.Value = result.InterfaceLuid;
+    route.Metric = result.Metric;
+
+    DWORD dwRet = CreateIpForwardEntry2(&route);
+    if (dwRet == 0)
+    {
+        Refresh();
+        return;
+    }
+
+    wr::SystemErrorDialog(owner, dwRet, "CreateIpForwardEntry2()");
+}
+
+void wr::RouterPanel::Data::OnGridIPv4DeleteRoute(const wxCommandEvent&)
+{
 }
 
 void wr::RouterPanel::Data::OnGridIPv6Scrolled(const wxMouseEvent& e)
@@ -172,38 +248,14 @@ static void s_router_fetch_route(IpForwardRecordVec& ipv4, IpForwardRecordVec& i
 
 static void s_router_fetch_adapter(AdapterAddressRecordVec& vec)
 {
-    wxMemoryBuffer        buff(16 * 1024);
-    IP_ADAPTER_ADDRESSES* addr = nullptr;
-    ULONG                 bufLen = buff.GetBufSize();
-    DWORD                 dwRetVal = ERROR_BUFFER_OVERFLOW;
-    const ULONG           flags = GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_WINS_INFO | GAA_FLAG_INCLUDE_GATEWAYS |
-                        GAA_FLAG_INCLUDE_ALL_INTERFACES | GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER;
-    while (true)
-    {
-        addr = static_cast<IP_ADAPTER_ADDRESSES*>(buff.GetData());
-        dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, nullptr, addr, &bufLen);
-        if (dwRetVal != ERROR_BUFFER_OVERFLOW)
-        {
-            break;
-        }
-        buff.SetBufSize(bufLen);
-    }
-    if (dwRetVal == ERROR_NO_DATA)
-    {
-        return;
-    }
-    if (dwRetVal != ERROR_SUCCESS)
-    {
-        throw std::runtime_error("GetAdaptersAddresses() failed");
-    }
-
-    for (; addr; addr = addr->Next)
+    wr::AdaptersAddresses adapters;
+    for (const auto addr : adapters)
     {
         wr::StringVec unicastAddr;
         for (const IP_ADAPTER_UNICAST_ADDRESS_LH* pUnicastAddr = addr->FirstUnicastAddress; pUnicastAddr;
              pUnicastAddr = pUnicastAddr->Next)
         {
-            unicastAddr.PushBack(wr::ToString(&pUnicastAddr->Address));
+            unicastAddr.push_back(wr::ToString(&pUnicastAddr->Address));
         }
 
         AdapterAddressRecord record = {
@@ -370,6 +422,11 @@ void wr::RouterPanel::Data::Refresh()
 
     gridIPv4->AutoSizeColumns();
     gridIPv6->AutoSizeColumns();
+}
+
+void wr::RouterPanel::Data::OnRefresh(const wxEvent&)
+{
+    Refresh();
 }
 
 wr::RouterPanel::RouterPanel(wxWindow* parent) : wxPanel(parent)

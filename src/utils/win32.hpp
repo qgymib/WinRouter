@@ -4,8 +4,10 @@
 #include <winsock2.h>
 #include <windows.h>
 #include <netioapi.h>
+#include <iphlpapi.h>
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace wr
 {
@@ -56,29 +58,9 @@ private:
     VoidReleaseFn m_fn;
 };
 
-class StringVec
+class StringVec : public std::vector<std::string>
 {
 public:
-    typedef std::vector<std::string> StrVec;
-
-public:
-    StringVec();
-    virtual ~StringVec();
-
-public:
-    StrVec::iterator       begin();
-    StrVec::iterator       end();
-    StrVec::const_iterator begin() const;
-    StrVec::const_iterator end() const;
-
-public:
-    /**
-     * @brief Inserts value at the end of the vector.
-     * @param[in] str String to insert.
-     * @return Self.
-     */
-    StringVec& PushBack(const std::string& str);
-
     /**
      * @brief Joins all the string list's strings into a single string with each element separated by the given \p
      * separator.
@@ -86,9 +68,6 @@ public:
      * @return A string.
      */
     std::string Join(const std::string& separator) const;
-
-private:
-    StrVec m_vec;
 };
 
 /**
@@ -134,6 +113,58 @@ std::string ToString(const ULONG* ZoneIndices, size_t ZoneIndicesLength);
  * @return UTF-8 string.
  */
 std::string ToString(const GUID* guid);
+
+/**
+ * @brief Check if we are running as admin.
+ * @return boolean.
+ */
+bool IsRunningAsAdmin();
+
+/**
+ * @brief Run self as admin.
+ * @return boolean.
+ */
+bool RunAsAdmin();
+
+class AdaptersAddresses
+{
+public:
+    typedef std::shared_ptr<AdaptersAddresses> Ptr;
+
+public:
+    class Iterator
+    {
+    public:
+        Iterator(IP_ADAPTER_ADDRESSES* current);
+        Iterator&             operator++();
+        bool                  operator!=(const Iterator& other);
+        IP_ADAPTER_ADDRESSES* operator*() const;
+
+    private:
+        IP_ADAPTER_ADDRESSES* m_curr;
+    };
+
+public:
+    AdaptersAddresses();
+    Iterator begin();
+    Iterator end();
+
+public:
+    AdaptersAddresses(const AdaptersAddresses& other) = delete;
+    AdaptersAddresses& operator=(const AdaptersAddresses& other) = delete;
+
+private:
+    IP_ADAPTER_ADDRESSES* m_addr;
+    std::vector<uint8_t>  m_buff;
+};
+
+/**
+ * @brief Show system error dialog.
+ * @param[in] parent Parent window.
+ * @param[in] errcode System error code.
+ * @param[in] title Dialog title.
+ */
+void SystemErrorDialog(wxWindow* parent, DWORD errcode, const std::string& title);
 
 } // namespace wr
 
