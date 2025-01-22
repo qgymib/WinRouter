@@ -87,8 +87,9 @@ RouteGrid::RouteGrid(wxWindow* parent, wxWindowID id)
     EnableGridLines(false);
     EnableEditing(false);
     SetRowLabelSize(0);
-    DisableDragRowSize();
-    AutoSizeColumns();
+    EnableDragColSize(true);
+    EnableDragRowSize(false);
+    DisableDragGridSize();
 }
 
 void RouteGrid::DrawCellHighlight(wxDC&, const wxGridCellAttr*)
@@ -195,12 +196,12 @@ void wr::RouterPanel::Data::OnGridIPv4RightClick(const wxGridEvent& e)
     gridIPv4->SelectRow(row);
 
     wxMenu menu;
-    menu.Append(WIDGET_ROUTER_MENU_NEW_ROUTER, _("New Route"));
+    menu.Append(wxID_ADD);
     menu.Append(wxID_DELETE);
     menu.AppendSeparator();
     menu.Append(wxID_REFRESH);
 
-    menu.Bind(wxEVT_MENU, &Data::OnGridIPv4NewRoute, this, WIDGET_ROUTER_MENU_NEW_ROUTER);
+    menu.Bind(wxEVT_MENU, &Data::OnGridIPv4NewRoute, this, wxID_ADD);
     menu.Bind(wxEVT_MENU, &Data::OnGridIPv4DeleteRoute, this, wxID_DELETE);
     menu.Bind(wxEVT_MENU, &Data::OnRefresh, this, wxID_REFRESH);
 
@@ -229,6 +230,11 @@ void wr::RouterPanel::Data::OnGridIPv4NewRoute(const wxCommandEvent&)
 
     route.InterfaceLuid.Value = result.InterfaceLuid;
     route.Metric = result.Metric;
+
+    if (result.Persistent.has_value())
+    {
+        route.Immortal = result.Persistent.value();
+    }
 
     DWORD dwRet = CreateIpForwardEntry2(&route);
     if (dwRet == 0)

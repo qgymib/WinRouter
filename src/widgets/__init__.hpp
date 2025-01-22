@@ -23,8 +23,6 @@ enum WidgetID
 
     WIDGET_MAIN_MENU_RUN_AS_ADMIN_MENU,
     WIDGET_MAIN_MENU_SHOW_LOG,
-
-    WIDGET_ROUTER_MENU_NEW_ROUTER,
 };
 
 } // namespace wr
