@@ -1,18 +1,57 @@
 #include <wx/wx.h>
+#include <wx/cmdline.h>
 #include "widgets/MainFrame.hpp"
 
 class MainApp final : public wxApp
 {
 public:
     bool OnInit() override;
+    void OnInitCmdLine(wxCmdLineParser& parser) override;
+    bool OnCmdLineParsed(wxCmdLineParser& parser) override;
 };
 
 wxIMPLEMENT_APP(MainApp); // NOLINT
 
 bool MainApp::OnInit()
 {
+    if (!wxApp::OnInit())
+    {
+        return false;
+    }
+
     auto frame = new wr::MainFrame(nullptr);
     frame->SetIcon(wxIcon("IDI_ICON1"));
     frame->Show(true);
     return true;
+}
+
+void MainApp::OnInitCmdLine(wxCmdLineParser& parser)
+{
+    const wxCmdLineEntryDesc cmds[] = {
+        {
+         wxCMD_LINE_SWITCH, "h",
+         "help", "Display this help and exit.",
+         wxCMD_LINE_VAL_NONE, wxCMD_LINE_OPTION_HELP,
+         },
+        {
+         wxCMD_LINE_SWITCH, "s",
+         "service", "Run in service mode.",
+         wxCMD_LINE_VAL_NONE, wxCMD_LINE_HIDDEN,
+         },
+        { wxCMD_LINE_NONE },
+    };
+
+    parser.SetDesc(cmds);
+    parser.SetSwitchChars(wxT("-"));
+}
+
+bool MainApp::OnCmdLineParsed(wxCmdLineParser& parser)
+{
+    const bool serviceMode = parser.Found("s");
+    if (serviceMode)
+    {
+        return false;
+    }
+
+    return wxApp::OnCmdLineParsed(parser);
 }
