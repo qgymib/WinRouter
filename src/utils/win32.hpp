@@ -1,6 +1,7 @@
 #ifndef WR_UTILS_WIN32_HPP
 #define WR_UTILS_WIN32_HPP
 
+#include <wx/wx.h>
 #include <winsock2.h>
 #include <windows.h>
 #include <netioapi.h>
@@ -12,22 +13,18 @@
 namespace wr
 {
 
-template <typename T>
+template <typename T, typename F>
 class Pointer
 {
 public:
-    typedef void (*TypedReleaseFn)(T*);
-    typedef void (*VoidReleaseFn)(void*);
-
-public:
-    explicit Pointer(TypedReleaseFn fn)
+    explicit Pointer(F fn)
     {
         m_ptr = nullptr;
         m_fn = fn;
     }
-    Pointer(VoidReleaseFn fn)
+    Pointer(T p, F fn)
     {
-        m_ptr = nullptr;
+        m_ptr = p;
         m_fn = fn;
     }
     virtual ~Pointer()
@@ -43,19 +40,34 @@ public:
     Pointer& operator=(const Pointer& other) = delete;
 
 public:
-    T* operator->()
+    T Get()
     {
         return m_ptr;
     }
 
-    T** operator&()
+    void Set(T p)
+    {
+        m_ptr = p;
+    }
+
+    T operator->()
+    {
+        return m_ptr;
+    }
+
+    T* operator&()
     {
         return &m_ptr;
     }
 
+    bool operator==(const T other)
+    {
+        return m_ptr == other;
+    }
+
 private:
-    T*            m_ptr;
-    VoidReleaseFn m_fn;
+    T m_ptr;
+    F m_fn;
 };
 
 class StringVec : public std::vector<std::string>
@@ -159,12 +171,20 @@ private:
 };
 
 /**
+ * @brief Get current executable path.
+ * @return Path.
+ */
+std::wstring GetCurrentExecutablePath();
+
+/**
  * @brief Show system error dialog.
  * @param[in] parent Parent window.
  * @param[in] errcode System error code.
  * @param[in] title Dialog title.
  */
 void SystemErrorDialog(wxWindow* parent, DWORD errcode, const std::string& title);
+
+void InstallAsService();
 
 } // namespace wr
 

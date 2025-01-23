@@ -162,8 +162,8 @@ static std::string s_debug_get_adapters_addresses()
 
 static std::string s_debug_get_ip_forward_table2()
 {
-    wr::Pointer<MIB_IPFORWARD_TABLE2> pIpForwardTable(FreeMibTable);
-    DWORD                             ret = GetIpForwardTable2(AF_UNSPEC, &pIpForwardTable);
+    wr::Pointer<MIB_IPFORWARD_TABLE2*, void (*)(void*)> pIpForwardTable(FreeMibTable);
+    DWORD                                               ret = GetIpForwardTable2(AF_UNSPEC, &pIpForwardTable);
     if (ret != NO_ERROR)
     {
         return "GetIpForwardTable2() failed.";
@@ -203,8 +203,8 @@ static std::string s_debug_get_ip_forward_table2()
 
 static std::string s_debug_get_ip_interface_table()
 {
-    wr::Pointer<MIB_IPINTERFACE_TABLE> pipTable(FreeMibTable);
-    DWORD                              ret = GetIpInterfaceTable(AF_UNSPEC, &pipTable);
+    wr::Pointer<MIB_IPINTERFACE_TABLE*, void (*)(void*)> pipTable(FreeMibTable);
+    DWORD                                                ret = GetIpInterfaceTable(AF_UNSPEC, &pipTable);
     if (ret != NO_ERROR)
     {
         return "GetIpInterfaceTable() failed.";

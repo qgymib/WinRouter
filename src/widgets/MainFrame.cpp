@@ -10,6 +10,7 @@
 struct wr::MainFrame::Data
 {
     explicit Data(MainFrame* owner);
+    void OnInstallAsService(const wxCommandEvent& e);
     void OnRunAsAdmin(const wxCommandEvent& e);
     void onShowLogWindow(const wxCommandEvent& e);
 
@@ -25,6 +26,11 @@ static void OnAbout(wxCommandEvent&)
     info.SetIcon(wxIcon("IDI_ICON1"));
 
     wxAboutBox(info);
+}
+
+void wr::MainFrame::Data::OnInstallAsService(const wxCommandEvent&)
+{
+    wr::InstallAsService();
 }
 
 void wr::MainFrame::Data::OnRunAsAdmin(const wxCommandEvent&)
@@ -59,6 +65,7 @@ wr::MainFrame::Data::Data(MainFrame* owner)
     {
         wxMenu* menuHelp = new wxMenu;
         menuHelp->Append(WIDGET_MAIN_MENU_RUN_AS_ADMIN_MENU, _("Run as admin"));
+        menuHelp->Append(WIDGET_MAIN_MENU_INSTALL_AS_SERVICE, _("Install as service"));
         menuHelp->Append(WIDGET_MAIN_MENU_SHOW_LOG, _("Log"));
         menuHelp->Append(wxID_ABOUT);
 
@@ -87,6 +94,7 @@ wr::MainFrame::Data::Data(MainFrame* owner)
     }
 
     owner->Bind(wxEVT_MENU, &OnAbout, wxID_ABOUT);
+    owner->Bind(wxEVT_MENU, &Data::OnInstallAsService, this, WIDGET_MAIN_MENU_INSTALL_AS_SERVICE);
     owner->Bind(wxEVT_MENU, &Data::OnRunAsAdmin, this, WIDGET_MAIN_MENU_RUN_AS_ADMIN_MENU);
     owner->Bind(wxEVT_MENU, &Data::onShowLogWindow, this, WIDGET_MAIN_MENU_SHOW_LOG);
 }

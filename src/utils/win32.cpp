@@ -5,7 +5,7 @@
 #include <cassert>
 #include <stdexcept>
 
-static std::wstring GetCurrentExecutablePath()
+std::wstring wr::GetCurrentExecutablePath()
 {
     DWORD                buffSize = MAX_PATH;
     std::vector<wchar_t> buffer(buffSize);
@@ -268,4 +268,30 @@ void wr::SystemErrorDialog(wxWindow* parent, DWORD errcode, const std::string& t
     LocalFree(errMsg);
 
     wxMessageBox(message, caption, wxOK | wxICON_ERROR, parent);
+}
+
+void wr::InstallAsService()
+{
+    SC_HANDLE                                   handle = OpenSCManagerW(nullptr, nullptr, SC_MANAGER_CREATE_SERVICE);
+    wr::Pointer<SC_HANDLE, BOOL (*)(SC_HANDLE)> schSCManager(handle, CloseServiceHandle);
+    if (schSCManager == nullptr)
+    {
+        throw std::exception("OpenSCManagerW() failed");
+    }
+
+    const std::wstring origPath = wr::GetCurrentExecutablePath();
+    const std::wstring fullPath = L"\"" + origPath + L"\" -s";
+
+    const DWORD        dwDesiredAccess = SERVICE_ALL_ACCESS;
+    const DWORD        dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+    const DWORD        dwStartType = SERVICE_AUTO_START;
+    const DWORD        dwErrorControl = SERVICE_ERROR_NORMAL;
+    handle =
+        CreateServiceW(schSCManager.Get(), L"WinRouterService", L"WinRouterService", dwDesiredAccess, dwServiceType,
+                       dwStartType, dwErrorControl, fullPath.c_str(), nullptr, nullptr, nullptr, nullptr, nullptr);
+    wr::Pointer<SC_HANDLE, BOOL (*)(SC_HANDLE)> schService(handle, CloseServiceHandle);
+    if (schService == nullptr)
+    {
+        throw std::exception("CreateServiceW() failed");
+    }
 }

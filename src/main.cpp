@@ -1,5 +1,6 @@
 #include <wx/wx.h>
 #include <wx/cmdline.h>
+#include "service/__init__.hpp"
 #include "widgets/MainFrame.hpp"
 
 class MainApp final : public wxApp
@@ -27,7 +28,7 @@ bool MainApp::OnInit()
 
 void MainApp::OnInitCmdLine(wxCmdLineParser& parser)
 {
-    const wxCmdLineEntryDesc cmds[] = {
+    static const wxCmdLineEntryDesc cmds[] = {
         {
          wxCMD_LINE_SWITCH, "h",
          "help", "Display this help and exit.",
@@ -50,6 +51,7 @@ bool MainApp::OnCmdLineParsed(wxCmdLineParser& parser)
     const bool serviceMode = parser.Found("s");
     if (serviceMode)
     {
+        wr::ServiceMode();
         return false;
     }
 

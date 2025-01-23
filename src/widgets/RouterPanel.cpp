@@ -289,8 +289,8 @@ void wr::RouterPanel::Data::OnGridIPv6Scrolled(const wxMouseEvent& e)
 
 static void s_router_fetch_route(IpForwardRecordVec& ipv4, IpForwardRecordVec& ipv6)
 {
-    wr::Pointer<MIB_IPFORWARD_TABLE2> pIpForwardTable(FreeMibTable);
-    const DWORD                       ret = GetIpForwardTable2(AF_UNSPEC, &pIpForwardTable);
+    wr::Pointer<MIB_IPFORWARD_TABLE2*, void (*)(void*)> pIpForwardTable(FreeMibTable);
+    const DWORD                                         ret = GetIpForwardTable2(AF_UNSPEC, &pIpForwardTable);
     if (ret != NO_ERROR)
     {
         throw std::runtime_error("GetIpForwardTable2() failed");
