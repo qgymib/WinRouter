@@ -30,11 +30,6 @@ void MainApp::OnInitCmdLine(wxCmdLineParser& parser)
 {
     static const wxCmdLineEntryDesc cmds[] = {
         {
-         wxCMD_LINE_SWITCH, "h",
-         "help", "Display this help and exit.",
-         wxCMD_LINE_VAL_NONE, wxCMD_LINE_OPTION_HELP,
-         },
-        {
          wxCMD_LINE_SWITCH, "s",
          "service", "Run in service mode.",
          wxCMD_LINE_VAL_NONE, wxCMD_LINE_HIDDEN,
@@ -44,6 +39,8 @@ void MainApp::OnInitCmdLine(wxCmdLineParser& parser)
 
     parser.SetDesc(cmds);
     parser.SetSwitchChars(wxT("-"));
+
+    wxApp::OnInitCmdLine(parser);
 }
 
 bool MainApp::OnCmdLineParsed(wxCmdLineParser& parser)
