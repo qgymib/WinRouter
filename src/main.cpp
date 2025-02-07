@@ -1,6 +1,6 @@
 #include <wx/wx.h>
 #include <wx/cmdline.h>
-#include "service/__init__.hpp"
+#include "service/Server.hpp"
 #include "widgets/MainFrame.hpp"
 
 class MainApp final : public wxApp
@@ -48,7 +48,7 @@ bool MainApp::OnCmdLineParsed(wxCmdLineParser& parser)
     const bool serviceMode = parser.Found("s");
     if (serviceMode)
     {
-        wr::ServiceMode();
+        wr::ServiceServer();
         return false;
     }
 

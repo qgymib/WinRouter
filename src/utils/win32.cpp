@@ -28,6 +28,25 @@ std::wstring wr::GetCurrentExecutablePath()
     }
 }
 
+std::wstring wr::ToWideString(const char* str)
+{
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, str, -1, nullptr, 0);
+    if (size_needed == 0)
+    {
+        return L"";
+    }
+
+    std::wstring result(size_needed - 1, 0);
+
+    int chars_converted = MultiByteToWideChar(CP_UTF8, 0, str, -1, &result[0], size_needed);
+    if (chars_converted != size_needed)
+    {
+        throw std::runtime_error("MultiByteToWideChar failed");
+    }
+
+    return result;
+}
+
 std::string wr::ToString(const wchar_t* str)
 {
     const int len = WideCharToMultiByte(CP_UTF8, 0, str, -1, nullptr, 0, nullptr, nullptr);
@@ -282,10 +301,10 @@ void wr::InstallAsService()
     const std::wstring origPath = wr::GetCurrentExecutablePath();
     const std::wstring fullPath = L"\"" + origPath + L"\" -s";
 
-    const DWORD        dwDesiredAccess = SERVICE_ALL_ACCESS;
-    const DWORD        dwServiceType = SERVICE_WIN32_OWN_PROCESS;
-    const DWORD        dwStartType = SERVICE_AUTO_START;
-    const DWORD        dwErrorControl = SERVICE_ERROR_NORMAL;
+    const DWORD dwDesiredAccess = SERVICE_ALL_ACCESS;
+    const DWORD dwServiceType = SERVICE_WIN32_OWN_PROCESS;
+    const DWORD dwStartType = SERVICE_AUTO_START;
+    const DWORD dwErrorControl = SERVICE_ERROR_NORMAL;
     handle =
         CreateServiceW(schSCManager.Get(), L"WinRouterService", L"WinRouterService", dwDesiredAccess, dwServiceType,
                        dwStartType, dwErrorControl, fullPath.c_str(), nullptr, nullptr, nullptr, nullptr, nullptr);

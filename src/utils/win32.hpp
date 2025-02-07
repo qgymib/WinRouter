@@ -83,8 +83,15 @@ public:
 };
 
 /**
+ * @brief Convert UTF-8 string to wide string.
+ * @param[in] str UTF-8 string.
+ * @return Wide string.
+ */
+std::wstring ToWideString(const char* str);
+
+/**
  * @brief Convert wide string to UTF-8 string.
- * @param[in] src   Wide string.
+ * @param[in] str   Wide string.
  * @return UTF-8 string.
  */
 std::string ToString(const wchar_t* str);
