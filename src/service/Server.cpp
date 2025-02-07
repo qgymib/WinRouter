@@ -1,11 +1,10 @@
 #include "utils/win32.hpp"
+#include "Message.hpp"
 #include "Server.hpp"
 #include "config.h"
 
-struct Method
-{
-    const char* name;
-};
+#include <map>
+#include <functional>
 
 struct ClientConnection
 {
@@ -27,10 +26,40 @@ struct ClientConnectionVec : public std::vector<ClientConnection::Ptr>
 {
 };
 
+typedef wr::RpcResult<nlohmann::json>                       JsonRpcResult;
+typedef std::function<JsonRpcResult(const nlohmann::json&)> RpcMethod;
+typedef std::map<std::string, RpcMethod>                    RpcMethodMap;
+
 struct Server
 {
     ClientConnectionVec connections;
+    RpcMethodMap        methods;
 };
+
+static Server* s_server = nullptr;
+
+static wr::RpcResult<wr::IsPrivileged::Rsp> MethodIsPrivileged(const wr::IsPrivileged::Req&)
+{
+    return wr::RpcResult<wr::IsPrivileged::Rsp>::Ok(wr::IsPrivileged::Rsp{ wr::IsRunningAsAdmin() });
+}
+
+template <typename T>
+static void RegisterMethod(std::function<wr::RpcResult<typename T::Rsp>(const typename T::Req&)> f)
+{
+    RpcMethod cb = [f](const nlohmann::json& j) -> JsonRpcResult {
+        const typename T::Req          request = j.get<typename T::Req>();
+        wr::RpcResult<typename T::Rsp> response = f(request);
+        if (!response.IsOk())
+        {
+            return JsonRpcResult::Err(response.UnwrapErr());
+        }
+
+        nlohmann::json jRsp = response.Unwrap();
+        return JsonRpcResult::Ok(jRsp);
+    };
+
+    s_server->methods.insert(RpcMethodMap::value_type(T::NAME, cb));
+}
 
 ClientConnection::ClientConnection(HANDLE pipe)
 {
@@ -80,7 +109,7 @@ DWORD ClientConnection::ThreadProc(LPVOID lpParameter)
 
 void wr::ServiceServer()
 {
-    Server server;
+    RegisterMethod<wr::IsPrivileged>(MethodIsPrivileged);
 
     const std::wstring pipeName = wr::ToWideString(WR_SERVICE_PIPE_NAME);
     const DWORD        dwOpenMode = PIPE_ACCESS_DUPLEX;
