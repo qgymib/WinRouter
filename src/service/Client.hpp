@@ -14,17 +14,15 @@ public:
     virtual ~Client();
 
 public:
-    bool IsConnected() const;
-
     template <typename T>
     RpcResult<typename T::Rsp> Query(const typename T::Req& req)
     {
-        nlohmann::json jRsp;
-        DWORD          dwRetVal = Query(T::NAME, req, jRsp);
-        if (dwRetVal != 0)
+        RpcResult<nlohmann::json> rsp = Query(T::NAME, req);
+        if (!rsp.IsOk())
         {
-            return RpcError{ dwRetVal, "", "" };
+            return RpcResult<typename T::Rsp>::Err(rsp.UnwrapErr());
         }
+        nlohmann::json jRsp = rsp.Unwrap();
 
         auto jError = jRsp.find("error");
         if (jError != jRsp.end())
@@ -32,15 +30,15 @@ public:
             int         code = jError->at("code");
             std::string message = jError->at("message");
             std::string data = jError->value("data", "");
-            return RpcError{ code, message, data };
+            return RpcResult<typename T::Rsp>::Err(RpcError{ code, message, data });
         }
 
-        nlohmann::json result = jRsp["result"];
-        return result.template get<typename T::Rsp>();
+        nlohmann::json jResult = jRsp["result"];
+        return RpcResult<typename T::Rsp>::Ok(jResult.get<typename T::Rsp>());
     }
 
 private:
-    DWORD Query(const char* method, const nlohmann::json& params, nlohmann::json& response);
+    RpcResult<nlohmann::json> Query(const char* method, const nlohmann::json& params);
 
 private:
     struct Data;

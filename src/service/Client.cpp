@@ -42,11 +42,6 @@ wr::Client::~Client()
     delete m_data;
 }
 
-bool wr::Client::IsConnected() const
-{
-    return m_data->hPipe != INVALID_HANDLE_VALUE;
-}
-
 static std::string ToRawData(const char* method, const nlohmann::json& params, uint32_t id)
 {
     nlohmann::json request;
@@ -125,28 +120,33 @@ DWORD wr::Client::Data::Recv(std::string& content)
     return 0;
 }
 
-DWORD wr::Client::Query(const char* method, const nlohmann::json& params, nlohmann::json& response)
+wr::RpcResult<nlohmann::json> wr::Client::Query(const char* method, const nlohmann::json& params)
 {
     std::string rawReqData = ToRawData(method, params, m_data->id++);
 
     if (m_data->hPipe == INVALID_HANDLE_VALUE)
     {
-        return ERROR_BROKEN_PIPE;
+        return RpcResult<nlohmann::json>::Err(RpcError{ ERROR_BROKEN_PIPE });
     }
 
     DWORD dwRetVal = 0;
     BOOL  fSuccess = WriteFile(m_data->hPipe, rawReqData.c_str(), rawReqData.size(), &dwRetVal, nullptr);
     if (!fSuccess)
     {
-        return GetLastError();
+        int code = GetLastError();
+        return RpcResult<nlohmann::json>::Err(RpcError{ code });
     }
 
     std::string content;
     if ((dwRetVal = m_data->Recv(content)) != 0)
     {
-        return dwRetVal;
+        return RpcResult<nlohmann::json>::Err(RpcError{ static_cast<int>(dwRetVal) });
     }
 
-    response = nlohmann::json::parse(content);
-    return response.is_discarded() ? ERROR_INVALID_DATA : 0;
+    nlohmann::json response = nlohmann::json::parse(content);
+    if (response.is_discarded())
+    {
+        return RpcResult<nlohmann::json>::Err(RpcError{ ERROR_INVALID_DATA });
+    }
+    return RpcResult<nlohmann::json>::Ok(response);
 }

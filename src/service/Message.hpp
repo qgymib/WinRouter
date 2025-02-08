@@ -29,22 +29,30 @@ struct RpcError
 template <typename T>
 using RpcResult = Result<T, RpcError>;
 
-struct IsPrivileged
+struct Status
 {
-  	static inline const char* NAME = "IsPrivileged";
+  	static inline const char* NAME = "Status";
 
     struct Req
     {
         /**
-         * @brief Placeholder.
+         * @brief The process ID of who query the status.
          */
-        int32_t _;
+        int32_t pid;
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Req, _)
+        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Req, pid)
     };
 
     struct Rsp
     {
+        /**
+         * @brief The process ID.
+         */
+        int32_t pid;
+
+        /**
+         * @brief Is running in privileged mode.
+         */
         bool IsPrivileged;
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(Rsp, IsPrivileged)

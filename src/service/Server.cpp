@@ -38,9 +38,11 @@ struct Server
 
 static Server* s_server = nullptr;
 
-static wr::RpcResult<wr::IsPrivileged::Rsp> MethodIsPrivileged(const wr::IsPrivileged::Req&)
+static wr::RpcResult<wr::Status::Rsp> MethodIsPrivileged(const wr::Status::Req&)
 {
-    return wr::RpcResult<wr::IsPrivileged::Rsp>::Ok(wr::IsPrivileged::Rsp{ wr::IsRunningAsAdmin() });
+    const int32_t pid = GetCurrentProcessId();
+    const bool    IsPrivileged = wr::IsRunningAsAdmin();
+    return wr::RpcResult<wr::Status::Rsp>::Ok(wr::Status::Rsp{ pid, IsPrivileged });
 }
 
 template <typename T>
@@ -109,7 +111,7 @@ DWORD ClientConnection::ThreadProc(LPVOID lpParameter)
 
 void wr::ServiceServer()
 {
-    RegisterMethod<wr::IsPrivileged>(MethodIsPrivileged);
+    RegisterMethod<wr::Status>(MethodIsPrivileged);
 
     const std::wstring pipeName = wr::ToWideString(WR_SERVICE_PIPE_NAME);
     const DWORD        dwOpenMode = PIPE_ACCESS_DUPLEX;

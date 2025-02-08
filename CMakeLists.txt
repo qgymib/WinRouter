@@ -34,6 +34,7 @@ add_executable(${PROJECT_NAME} WIN32
     "src/widgets/NewRouteDialog.cpp"
     "src/widgets/RouterPanel.cpp"
     "src/main.cpp"
+    "src/Runtime.cpp"
     "resource.rc"
 )
 

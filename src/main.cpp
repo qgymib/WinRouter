@@ -2,11 +2,14 @@
 #include <wx/cmdline.h>
 #include "service/Server.hpp"
 #include "widgets/MainFrame.hpp"
+#include "Runtime.hpp"
 
 class MainApp final : public wxApp
 {
 public:
     bool OnInit() override;
+    int OnExit() override;
+
     void OnInitCmdLine(wxCmdLineParser& parser) override;
     bool OnCmdLineParsed(wxCmdLineParser& parser) override;
 };
@@ -20,10 +23,19 @@ bool MainApp::OnInit()
         return false;
     }
 
+    wr::G = new wr::Runtime;
+
     auto frame = new wr::MainFrame(nullptr);
     frame->SetIcon(wxIcon("IDI_ICON1"));
     frame->Show(true);
     return true;
+}
+
+int MainApp::OnExit()
+{
+    delete wr::G;
+    wr::G = nullptr;
+    return 0;
 }
 
 void MainApp::OnInitCmdLine(wxCmdLineParser& parser)
