@@ -27,6 +27,7 @@ add_executable(${PROJECT_NAME} WIN32
     "src/service/Client.cpp"
     "src/service/Message.cpp"
     "src/service/Server.cpp"
+    "src/service/Session.cpp"
     "src/utils/win32.cpp"
     "src/widgets/AdapterPanel.cpp"
     "src/widgets/DebugPanel.cpp"

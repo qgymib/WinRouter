@@ -29,8 +29,12 @@ public:
         {
             int         code = jError->at("code");
             std::string message = jError->at("message");
-            std::string data = jError->value("data", "");
-            return RpcResult<typename T::Rsp>::Err(RpcError{ code, message, data });
+            auto        data = jError->find("data");
+            if (data != jError->end())
+            {
+                return RpcResult<typename T::Rsp>::Err(RpcError{ code, message, std::optional<nlohmann::json>(*data) });
+            }
+            return RpcResult<typename T::Rsp>::Err(RpcError{ code, message });
         }
 
         nlohmann::json jResult = jRsp["result"];

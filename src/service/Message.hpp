@@ -2,6 +2,7 @@
 #define WR_SERVICE_MESSAGE_HPP
 
 #include <string>
+#include <optional>
 #include <nlohmann/json.hpp>
 #include "utils/Result.hpp"
 
@@ -22,16 +23,16 @@ struct RpcError
      * + -32000 to -32099: Server error
      * + >0: Pipe error, see GetLastError().
      */
-    int         code;
-    std::string message;
-    std::string data;
+    int                           code;
+    std::string                   message;
+    std::optional<nlohmann::json> data;
 };
 template <typename T>
 using RpcResult = Result<T, RpcError>;
 
 struct Status
 {
-  	static inline const char* NAME = "Status";
+    static inline const char* NAME = "Status";
 
     struct Req
     {
