@@ -3,6 +3,7 @@
 
 #include <string>
 #include <optional>
+#include <windows.h>
 #include <nlohmann/json.hpp>
 #include "utils/Result.hpp"
 
@@ -39,7 +40,7 @@ struct Status
         /**
          * @brief The process ID of who query the status.
          */
-        int32_t pid;
+        DWORD pid;
 
         NLOHMANN_DEFINE_TYPE_INTRUSIVE(Req, pid)
     };
@@ -49,7 +50,7 @@ struct Status
         /**
          * @brief The process ID.
          */
-        int32_t pid;
+        DWORD pid;
 
         /**
          * @brief Is running in privileged mode.

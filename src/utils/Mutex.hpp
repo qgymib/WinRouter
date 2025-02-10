@@ -30,7 +30,7 @@ public:
         Locker(Lock* l, T* t) : m_lock(l), m_data(t)
         {
         }
-        Locker(Locker& orig) = delete;
+
         Locker(Locker&&) = default;
         Locker& operator=(Locker&&) = default;
 
@@ -39,6 +39,7 @@ public:
         {
             Drop();
         }
+        Locker(Locker& orig) = delete;
 
         T* operator->() const
         {
